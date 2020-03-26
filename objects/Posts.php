@@ -20,7 +20,8 @@
     
         header("location:../productside.php"); 
     }
-else if(isset($_GET['action']) && $_GET['action'] == "update"){
+
+    else if(isset($_GET['action']) && $_GET['action'] == "update"){
     $type = $_POST['type'];
     $color = $_POST['color'];
     $price = $_POST['price'];
@@ -29,11 +30,32 @@ else if(isset($_GET['action']) && $_GET['action'] == "update"){
     header("location:../productside.php");
 }
 
+/* if(isset($_GET['action']) && $_GET['action'] == "add") { //om det finns action att göra o om den är satt så ska den deletas. Det innebär: allt som görs under
+
+    $query = "DELETE FROM products WHERE id=". $_GET['id'];
+
+    $Id = htmlspecialchars($id);
+
+    $sth =  $dbh->prepare($query); 
+    $sth->bindParam('id', $id); 
+
+    $return = $dbh->exec($query);
+
+
+    $query = "DELETE FROM products WHERE id=". $_GET['id']; //query returnerar en array med värdet från databasen 
+
+    $return = $dbh->exec($query); //exec returnerar false
+
+    header("location:../productside.php"); 
+} */
+
 
     class Post {
 
         private $database_handler;
         private $type;
+        private $token_validity_time = 1; // minutes
+
 
 
        
@@ -91,18 +113,171 @@ else if(isset($_GET['action']) && $_GET['action'] == "update"){
                 $statementHandler->execute();
 
                 return $statementHandler->fetch();
+
+
+                if(!empty($return)) {
+
+                    $this->type = $return['type'];
+
+                    $return_object->token = $this->getToken($return['id'], $return['type']);
+                    return json_encode($return_object);
+                } else {
+                    echo "fel login";
+                }
+
                 
 
             } else {
+                echo "Could not create a statementhandler";
+                die;
+            }
+
+        }
+
+      
+            
+
+
+        private function getToken($productID, $type) {
+
+            $token = $this->checkToken($type);
+
+            return $token;
+
+        }
+
+        private function checkToken($productID_IN) {
+
+            $query_string = "SELECT token, date_updated FROM carttoken WHERE product_id=:productID";
+            $statementHandler = $this->database_handler->prepare($query_string);
+
+            if($statementHandler !== false) {
+
+                    $statementHandler->bindParam(":productID", $productID_IN);
+                    $statementHandler->execute();
+                    $return = $statementHandler->fetch();
+                  
+
+                    
+                    if(!empty($return['token'])) {
+                        // token finns
+
+                        $token_timestamp = $return['date_updated'];
+                        $diff = time() - $token_timestamp;
+                        if(($diff / 60) > $this->token_validity_time) {
+
+                            $query_string = "DELETE FROM carttokens WHERE product_id=:productID";
+                            $statementHandler = $this->database_handler->prepare($query_string);
+
+                            $statementHandler->bindParam(':productID', $productID_IN);
+                            $statementHandler->execute();
+
+                            return $this->createToken($productID_IN);
+
+                        } else {
+                            return $return['token'];
+                        }
+             
+
+                    } else {
+
+                        return $this->createToken($productID_IN);
+
+                    }
+
+            } else {
+                echo "Could not create a statementhandler";
+            }
+
+        }
+
+        private function createToken($product_id_parameter) {
+
+            $uniqToken = md5($this->type.uniqid('', true).time());
+
+            $query_string = "INSERT INTO carttokens (product_id, token, date_updated) VALUES(:productid, :token, :current_time)";
+            $statementHandler = $this->database_handler->prepare($query_string);
+
+            if($statementHandler !== false) {
+
+                $currentTime = time();
+                $statementHandler->bindParam(":productid", $product_id_parameter);
+                $statementHandler->bindParam(":token", $uniqToken);
+                $statementHandler->bindParam(":current_time", $currentTime, PDO::PARAM_INT);
+
+                $statementHandler->execute();
+              //  $statementHandler->debugDumpParams();
+
+                return $uniqToken;
+
+
+            } else {
+                return "Could not create a statementhandler";
+            }
+
+
+        }
+
+    
+    public function validateToken($token) {
+
+        $query_string = "SELECT product_id, date_updated FROM carttokens WHERE token=:token";
+        $statementHandler = $this->database_handler->prepare($query_string);
+
+        if($statementHandler !== false ){
+
+            $statementHandler->bindParam(":token", $token);
+            $statementHandler->execute();
+
+            $token_data = $statementHandler->fetch();
+
+            if(!empty($token_data['date_updated'])) {
+
+                $diff = time() - $token_data['date_updated'];
+
+                if( ($diff / 60) < $this->token_validity_time ) {
+
+                    $query_string = "UPDATE carttokens SET date_updated=:updated_date WHERE token=:token";
+                    $statementHandler = $this->database_handler->prepare($query_string);
+                    
+                    $updatedDate = time();
+                    $statementHandler->bindParam(":updated_date", $updatedDate, PDO::PARAM_INT);
+                    $statementHandler->bindParam(":token", $token);
+
+                    $statementHandler->execute();
+
+                    return true;
+
+                } else {
+                    echo "Session closed due to inactivity<br />";
+                    return false;
+                }
+            } else {
+                echo "Could not find token, please login first<br />";
                 return false;
             }
 
-            
+        } else {
+            echo "Couldnt create statementhandler<br />";
+            return false;
+        }
+
+        // 1. Validera parametern $token mot databasen.
+        // 2. Uppdatera date_updated vid check om den är aktiv.
+        // 3. returnera sant om den finns, falskt om den inte finns eller om den är inaktiv.
+
+
+
+        return true;
+
+    }
+    
+    
 
        }
 
 
-    }
+    
 
     class GetProduct {
         private $databaseHandler;

@@ -6,7 +6,7 @@
 
         private $database_handler;
         private $username;
-        private $token_validity_time = 15; // minutes
+        private $token_validity_time = 1; // minutes
 
 
        
@@ -38,18 +38,17 @@
 
             } else {
                 $return_object->state = "ERROR";
-                $return_object->message = "Email is taken";
+                $return_object->message = "Denna mail är redan registrerad. Testa med en annan.";
             }
 
         } else {
             $return_object->state = "ERROR";
-            $return_object->message = "Username is taken";
+            $return_object->message = "Upptaget användarnamn. Testa med ett annat";
         }
             
 
         return json_encode($return_object);
        }
-       
        
        private function insertUserToDatabase($username_param, $password_param, $email_param) {
 
@@ -83,7 +82,6 @@
                 return false;
             }
 
-            
 
        }
 
@@ -113,6 +111,21 @@
             }
         }
 
+     
+        private function userRole( $userRole_param ) {
+
+            $query_string = "SELECT role FROM users WHERE role=:role";
+            $statementHandler = $this->database_handler->prepare($query_string);
+
+            if($statementHandler !== false ){
+
+                $statementHandler->bindParam(":role", $role_param);
+                $statementHandler->execute();
+
+            }
+        }
+
+     
 
         
         
@@ -145,16 +158,16 @@
         public function loginUser($username_parameter, $password_parameter) {
             $return_object = new stdClass();
 
-            $query_string = "SELECT id, username FROM users WHERE username=:username_IN AND password=:password_IN";
+            $query_string = "SELECT id, username, email, role FROM users WHERE username=:username_IN AND password=:password_IN";
             $statementHandler = $this->database_handler->prepare($query_string);
             
             if($statementHandler !== false) {
 
                 $password = md5($password_parameter);
-                
 
                 $statementHandler->bindParam(':username_IN', $username_parameter);
                 $statementHandler->bindParam(':password_IN', $password);
+
 
                 
 
@@ -169,7 +182,7 @@
                     return json_encode($return_object);
                 } else {
                     echo "fel login";
-                } 
+                }
 
                 
 
@@ -180,7 +193,8 @@
 
         }
 
-    
+        
+
 
         private function getToken($userID, $username) {
 
@@ -192,7 +206,7 @@
 
         private function checkToken($userID_IN) {
 
-            $query_string = "SELECT token FROM tokens WHERE user_id=:userID";
+            $query_string = "SELECT token, date_updated FROM tokens WHERE user_id=:userID";
             $statementHandler = $this->database_handler->prepare($query_string);
 
             if($statementHandler !== false) {
@@ -239,7 +253,7 @@
 
             $uniqToken = md5($this->username.uniqid('', true).time());
 
-            $query_string = "INSERT INTO tokens (user_id, token) VALUES(:userid, :token)";
+            $query_string = "INSERT INTO tokens (user_id, token, date_updated) VALUES(:userid, :token, :current_time)";
             $statementHandler = $this->database_handler->prepare($query_string);
 
             if($statementHandler !== false) {
@@ -247,6 +261,7 @@
                 $currentTime = time();
                 $statementHandler->bindParam(":userid", $user_id_parameter);
                 $statementHandler->bindParam(":token", $uniqToken);
+                $statementHandler->bindParam(":current_time", $currentTime, PDO::PARAM_INT);
 
                 $statementHandler->execute();
               //  $statementHandler->debugDumpParams();
@@ -263,6 +278,7 @@
 
     
     public function validateToken($token) {
+
         $query_string = "SELECT user_id, date_updated FROM tokens WHERE token=:token";
         $statementHandler = $this->database_handler->prepare($query_string);
 
@@ -316,6 +332,3 @@
     
     
     }
-
-
-?>
