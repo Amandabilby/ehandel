@@ -67,6 +67,13 @@
        public function addProduct($type_IN, $color_IN, $price_IN) {
         $return_object = new stdClass();
 
+
+
+
+
+
+
+
        /* if($this->isUsernameTaken($username_IN) === false) {
             if($this->isEmailTaken($email_IN) === false) {
 */
@@ -115,6 +122,8 @@
                 return $statementHandler->fetch();
 
 
+
+
                 if(!empty($return)) {
 
                     $this->type = $return['type'];
@@ -131,176 +140,201 @@
                 echo "Could not create a statementhandler";
                 die;
             }
-
+       
+       
         }
 
-      
-            
-
-
-        private function getToken($productID, $type) {
-
-            $token = $this->checkToken($type);
-
-            return $token;
-
-        }
-
-        private function checkToken($productID_IN) {
-
-            $query_string = "SELECT token, date_updated FROM carttoken WHERE product_id=:productID";
+        public function getProduct($type_parameter, $color_parameter, $price_parameter) {
+            $query_string = "SELECT id, type, color, price FROM products WHERE type=:type_IN";
             $statementHandler = $this->database_handler->prepare($query_string);
-
+            
             if($statementHandler !== false) {
+    
+    
+                $statementHandler->bindParam(':type_IN', $type_parameter);
+                $statementHandler->bindParam(':color_IN', $color_parameter);
+                $statementHandler->bindParam(':price_IN', $price_parameter);
 
-                    $statementHandler->bindParam(":productID", $productID_IN);
-                    $statementHandler->execute();
-                    $return = $statementHandler->fetch();
-                  
 
-                    
-                    if(!empty($return['token'])) {
-                        // token finns
+    
+    
+                
+    
+                $statementHandler->execute();
+                $return = $statementHandler->fetch();
+    
+                if(!empty($return)) {
+    
+                    $this->type = $return['type'];
+    
+                    $return_object->token = $this->getToken($return['id'], $return['type']);
+                    return json_encode($return_object);
+                } else {
+                echo "Could not create a statementhandler";
+            }
+        }
+    }
 
-                        $token_timestamp = $return['date_updated'];
-                        $diff = time() - $token_timestamp;
-                        if(($diff / 60) > $this->token_validity_time) {
 
-                            $query_string = "DELETE FROM carttokens WHERE product_id=:productID";
-                            $statementHandler = $this->database_handler->prepare($query_string);
+    private function getToken($productID, $type) {
 
-                            $statementHandler->bindParam(':productID', $productID_IN);
-                            $statementHandler->execute();
+        $token = $this->checkToken($productID);
 
-                            return $this->createToken($productID_IN);
+        return $token;
 
-                        } else {
-                            return $return['token'];
-                        }
-             
+    }
 
-                    } else {
+    private function checkToken($productID_IN) {
+
+        $query_string = "SELECT token, date_updated FROM carttokens WHERE product_id=:productID";
+        $statementHandler = $this->database_handler->prepare($query_string);
+
+        if($statementHandler !== false) {
+
+                $statementHandler->bindParam(":productID", $productID_IN);
+                $statementHandler->execute();
+                $return = $statementHandler->fetch();
+              
+
+                
+                if(!empty($return['token'])) {
+                    // token finns
+
+                    $token_timestamp = $return['date_updated'];
+                    $diff = time() - $token_timestamp;
+                    if(($diff / 60) > $this->token_validity_time) {
+
+                        $query_string = "DELETE FROM carttokens WHERE product_id=:productID";
+                        $statementHandler = $this->database_handler->prepare($query_string);
+
+                        $statementHandler->bindParam(':productID', $productID_IN);
+                        $statementHandler->execute();
 
                         return $this->createToken($productID_IN);
 
+                    } else {
+                        return $return['token'];
                     }
-
-            } else {
-                echo "Could not create a statementhandler";
-            }
-
-        }
-
-        private function createToken($product_id_parameter) {
-
-            $uniqToken = md5($this->type.uniqid('', true).time());
-
-            $query_string = "INSERT INTO carttokens (product_id, token, date_updated) VALUES(:productid, :token, :current_time)";
-            $statementHandler = $this->database_handler->prepare($query_string);
-
-            if($statementHandler !== false) {
-
-                $currentTime = time();
-                $statementHandler->bindParam(":productid", $product_id_parameter);
-                $statementHandler->bindParam(":token", $uniqToken);
-                $statementHandler->bindParam(":current_time", $currentTime, PDO::PARAM_INT);
-
-                $statementHandler->execute();
-              //  $statementHandler->debugDumpParams();
-
-                return $uniqToken;
-
-
-            } else {
-                return "Could not create a statementhandler";
-            }
-
-
-        }
-
-    
-    public function validateToken($token) {
-
-        $query_string = "SELECT product_id, date_updated FROM carttokens WHERE token=:token";
-        $statementHandler = $this->database_handler->prepare($query_string);
-
-        if($statementHandler !== false ){
-
-            $statementHandler->bindParam(":token", $token);
-            $statementHandler->execute();
-
-            $token_data = $statementHandler->fetch();
-
-            if(!empty($token_data['date_updated'])) {
-
-                $diff = time() - $token_data['date_updated'];
-
-                if( ($diff / 60) < $this->token_validity_time ) {
-
-                    $query_string = "UPDATE carttokens SET date_updated=:updated_date WHERE token=:token";
-                    $statementHandler = $this->database_handler->prepare($query_string);
-                    
-                    $updatedDate = time();
-                    $statementHandler->bindParam(":updated_date", $updatedDate, PDO::PARAM_INT);
-                    $statementHandler->bindParam(":token", $token);
-
-                    $statementHandler->execute();
-
-                    return true;
+         
 
                 } else {
-                    echo "Session closed due to inactivity<br />";
-                    return false;
+
+                    return $this->createToken($productID_IN);
+
                 }
-            } else {
-                echo "Could not find token, please login first<br />";
-                return false;
-            }
 
         } else {
-            echo "Couldnt create statementhandler<br />";
+            echo "Could not create a statementhandler";
+        }
+
+    }
+
+    private function createToken($product_id_parameter) {
+
+        $uniqToken = md5($this->type.uniqid('', true).time());
+
+        $query_string = "INSERT INTO carttokens (product_id, token, date_updated) VALUES(:productid, :carttoken, :current_time)";
+        $statementHandler = $this->database_handler->prepare($query_string);
+
+        if($statementHandler !== false) {
+
+            $currentTime = time();
+            $statementHandler->bindParam(":productid", $product_id_parameter);
+            $statementHandler->bindParam(":token", $uniqToken);
+            $statementHandler->bindParam(":current_time", $currentTime, PDO::PARAM_INT);
+
+            $statementHandler->execute();
+          //  $statementHandler->debugDumpParams();
+
+            return $uniqToken;
+
+
+        } else {
+            return "Could not create a statementhandler";
+        }
+
+
+    }
+
+
+public function validateToken($token) {
+
+    $query_string = "SELECT product_id, date_updated FROM carttokens WHERE token=:token";
+    $statementHandler = $this->database_handler->prepare($query_string);
+
+    if($statementHandler !== false ){
+
+        $statementHandler->bindParam(":token", $token);
+        $statementHandler->execute();
+
+        $token_data = $statementHandler->fetch();
+
+        if(!empty($token_data['date_updated'])) {
+
+            $diff = time() - $token_data['date_updated'];
+
+            if( ($diff / 60) < $this->token_validity_time ) {
+
+                $query_string = "UPDATE carttokens SET date_updated=:updated_date WHERE token=:token";
+                $statementHandler = $this->database_handler->prepare($query_string);
+                
+                $updatedDate = time();
+                $statementHandler->bindParam(":updated_date", $updatedDate, PDO::PARAM_INT);
+                $statementHandler->bindParam(":token", $token);
+
+                $statementHandler->execute();
+
+                return true;
+
+            } else {
+                echo "Session closed due to inactivity<br />";
+                return false;
+            }
+        } else {
+            echo "Could not find token, please login first<br />";
             return false;
         }
 
-        // 1. Validera parametern $token mot databasen.
-        // 2. Uppdatera date_updated vid check om den är aktiv.
-        // 3. returnera sant om den finns, falskt om den inte finns eller om den är inaktiv.
+    } else {
+        echo "Couldnt create statementhandler<br />";
+        return false;
+    }
+
+    // 1. Validera parametern $token mot databasen.
+    // 2. Uppdatera date_updated vid check om den är aktiv.
+    // 3. returnera sant om den finns, falskt om den inte finns eller om den är inaktiv.
 
 
 
-        return true;
+    return true;
+
+}
+
+
+}
+
+
+class GetProducts {
+    private $databaseHandler;
+    private $order = "desc";
+    private $posts; 
+
+    public function __construct($dbh) {
+        $this->databaseHandler = $dbh;
 
     }
-    
-    
+ /* hämtar alla poster och returnerar dem en array*/
+   public function fetchAll() {
+        $query = "SELECT id, type, color, price FROM products ORDER BY id $this->order";
+        $return_array = $this->databaseHandler->query($query);
+        $return_array = $return_array->fetchAll(PDO::FETCH_ASSOC);
 
-       }
+        $this->posts = $return_array;
+    }
 
+    public function getPosts() {
+        return $this->posts;
+    }
 
-    
-
-    class GetProduct {
-        private $databaseHandler;
-        private $order = "desc";
-        private $posts; 
-    
-        public function __construct($dbh) {
-            $this->databaseHandler = $dbh;
-    
-        }
-     /* hämtar alla poster och returnerar dem en array*/
-        public function fetchAll() {
-            $query = "SELECT id, type, color, price FROM products ORDER BY id $this->order";
-            $return_array = $this->databaseHandler->query($query);
-            $return_array = $return_array->fetchAll(PDO::FETCH_ASSOC);
-    
-            $this->posts = $return_array;
-        }
-    
-        public function getPosts() {
-            return $this->posts;
-        }
-    
-     }
-    
-?>
+ }
+?> 

@@ -14,14 +14,18 @@ if(!isset($userRole_param['role']) || $userRole_param['role'] != "user") {
 echo "hej<br><br>"; 
 }
 
-$Posts = new GetProduct($databaseHandler); 
+$Posts = new GetProducts($databaseHandler); 
 $Posts->fetchAll();
 
 foreach( $Posts->getPosts() as $post ) {
   echo "" . "Typ: " . "" . $post ['type'] . "<br />";
   echo "" . "Färg: " . "" . $post ['color'] . "<br />";
   echo "" . "Pris: " . "" . $post ['price'] . " sek<br /><br>"; 
-  echo "" . "<button type='button'><a id='btn' href=\"cart.php?action=add&id=" . $post['id'] ."\">Lägg till i varukorg</a></button><br><br>"; 
+  echo "" . "  <form action='http://192.168.64.2/ehandel/posts/getProductsForCart.php' method='POST'>
+    
+    <input type='submit' value='Lägg till i varukorg' />
+</form>
+  <br><br>"; 
 
 
 /* } if(!isset($_SESSION['role']) || $_SESSION['role'] != "admin") {

@@ -9,7 +9,7 @@
     
     $token = $_POST['token'];
 
-if($user_handler->validateToken($token) === false) {
+if($post_handler->validateToken($token) === false) {
     echo "Invalid token!";
     die;
 }

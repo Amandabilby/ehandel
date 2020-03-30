@@ -4,7 +4,6 @@
         <input type="text" name="type" placeholder="type" /><br />
         <input type="text" name="color" placeholder="color" /><br />
         <input type="text" name="price" placeholder="price" /><br /><br />
-
         
         <input type="submit" value="Lägg till produkt" />
     </form>
