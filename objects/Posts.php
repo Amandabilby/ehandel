@@ -152,8 +152,7 @@
     
     
                 $statementHandler->bindParam(':type_IN', $type_parameter);
-                $statementHandler->bindParam(':color_IN', $color_parameter);
-                $statementHandler->bindParam(':price_IN', $price_parameter);
+              
 
 
     
