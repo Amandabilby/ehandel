@@ -2,6 +2,7 @@
 
     include("../config/database_handler.php");
 
+
     class User {
 
         private $database_handler;
@@ -112,7 +113,7 @@
         }
 
      
-        private function userRole( $userRole_param ) {
+       /* private function userRole( $userRole_param ) {
 
             $query_string = "SELECT role FROM users WHERE role=:role";
             $statementHandler = $this->database_handler->prepare($query_string);
@@ -125,7 +126,7 @@
             }
         }
 
-     
+     */
 
         
         

@@ -1,7 +1,9 @@
 <?php
 
     include("../objects/Posts.php");
+    include("../objects/Users.php");
 
+    
     $Posts = new Post($databaseHandler); 
     $Posts->fetchAll();
     
